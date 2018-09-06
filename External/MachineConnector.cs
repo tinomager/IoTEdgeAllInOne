@@ -20,14 +20,15 @@ namespace AzureIoTEdgeFilterModule{
         public bool InteractWithMachine(MachineInteractionCommand command){
             return this.SendRequest(new MachineCommand(){
                 Type = "ShowStatus",
-                Payload = command.CommandLevel.ToString()
+                Payload = JsonConvert.SerializeObject(command)
             }).Result;
         }
 
         public bool SendText(MachineSendTextCommand command){
+            
             var cmd = new MachineCommand(){
                 Type = "ShowText",
-                Payload = command.Text
+                Payload = JsonConvert.SerializeObject(command)
             };
 
             Console.WriteLine($"Trying to send {JsonConvert.SerializeObject(cmd)} to {this.url}");

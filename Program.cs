@@ -121,12 +121,16 @@ namespace IoTEdgeAllInOne
         }
 
         static public void StartMessageSending(){
-            try{
-                while(true){
+            while (true)
+            {
+                try
+                {
                     var data = dataLoader.GetDHTData();
-                    if(data != null){
+                    if (data != null)
+                    {
                         Console.WriteLine($"Read data temp: {data.Temperature}, hum: {data.Humidity}");
-                        if(IsDebug){
+                        if (IsDebug)
+                        {
                             Console.Write($"DEBUG: Current configuration: ");
                             Console.Write($"TempMean: {TempMean}, ");
                             Console.Write($"HumMean: {HumMean}, ");
@@ -141,22 +145,25 @@ namespace IoTEdgeAllInOne
                             Console.Write($"SendDataToCloud: {SendDataToCloud}, ");
                             Console.WriteLine("");
                         }
-                        
+
                         var isAnomaly = anomalyDetector.IsAnomaly(data.Temperature, data.Humidity);
                         var isCritical = data.Temperature < TempThresholdLower ||
                                             data.Temperature > TempThresholdUpper ||
                                             data.Humidity < HumThresholdLower ||
                                             data.Humidity > HumThresholdUpper;
 
-                        if(IsDebug){
+                        if (IsDebug)
+                        {
                             Console.Write($"IsAnomaly: {isAnomaly}, IsCritical: {isCritical}");
                             Console.WriteLine("");
                         }
 
                         DeviceToCloudMessage d2cMessage = null;
-                        if(isAnomaly || isCritical){
-                            
-                            d2cMessage = new DeviceToCloudMessage(){
+                        if (isAnomaly || isCritical)
+                        {
+
+                            d2cMessage = new DeviceToCloudMessage()
+                            {
                                 Temperature = data.Temperature,
                                 Humidity = data.Humidity,
                                 MessageLevel = (int)(isCritical ? DeviceToCloudMessageLevel.Critical : DeviceToCloudMessageLevel.Warning),
@@ -164,14 +171,17 @@ namespace IoTEdgeAllInOne
                             };
 
                             var level = isCritical ? InteractionCommandLevel.Critical : InteractionCommandLevel.Warning;
-                            machineConnector.InteractWithMachine(new MachineInteractionCommand(){
+                            machineConnector.InteractWithMachine(new MachineInteractionCommand()
+                            {
                                 CommandLevel = level,
                                 Temperature = data.Temperature,
                                 Humidity = data.Humidity
                             });
                         }
-                        else if(SendDataToCloud){
-                            d2cMessage = new DeviceToCloudMessage(){
+                        else if (SendDataToCloud)
+                        {
+                            d2cMessage = new DeviceToCloudMessage()
+                            {
                                 Temperature = data.Temperature,
                                 Humidity = data.Humidity,
                                 MessageLevel = (int)DeviceToCloudMessageLevel.Info,
@@ -179,35 +189,42 @@ namespace IoTEdgeAllInOne
                             };
                         }
 
-                        if(d2cMessage != null){
+                        if (d2cMessage != null)
+                        {
                             SendCloudMessage(d2cMessage);
                         }
                     }
-                    else{
+                    else
+                    {
                         Console.WriteLine("Error: Cannot read data from DHT sensor");
                     }
 
                     Thread.Sleep(SleepInterval);
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Exception occured during message sending: {ex.Message}");
+                    Console.WriteLine(ex);
+                }
             }
-            catch(Exception ex){
-                Console.WriteLine($"Exception occured during message sending: {ex.Message}");
-                Console.WriteLine(ex);
-            }
+
         }
        
         static async public void StartMessageReceiver(){
             while (true)
             {
-                Message receivedMessage = await deviceClient.ReceiveAsync();
-                if (receivedMessage == null) continue;
+                try
+                {
+                    Message receivedMessage = await deviceClient.ReceiveAsync();
+                    if (receivedMessage == null) continue;
 
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                var messageString = Encoding.ASCII.GetString(receivedMessage.GetBytes());
-                Console.WriteLine("Received message: {0}", messageString);
-                Console.ResetColor();
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    var messageString = Encoding.ASCII.GetString(receivedMessage.GetBytes());
+                    Console.WriteLine("Received message: {0}", messageString);
+                    Console.ResetColor();
 
-                if(machineConnector.SendText(new MachineSendTextCommand(){
+                    if (machineConnector.SendText(new MachineSendTextCommand()
+                    {
                         Text = messageString,
                         CommandLevel = InteractionCommandLevel.Info
                     }))
@@ -215,7 +232,13 @@ namespace IoTEdgeAllInOne
                         Console.WriteLine($"Successfully send text to local machine");
                     }
 
-                await deviceClient.CompleteAsync(receivedMessage);
+                    await deviceClient.CompleteAsync(receivedMessage);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Exception occured during message receiving");
+                    Console.WriteLine(ex.Message);
+                }
             }
         }
 
